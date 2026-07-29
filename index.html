@@ -51,16 +51,42 @@ const ctx = canvas.getContext("2d");
 const wrap = document.getElementById("square-wrap");
 
 function resize(){
-  const size = wrap.clientWidth; // match square exactly
-  canvas.width = size;
-  canvas.height = size;
+  const size = wrap.clientWidth; // match square exactly (CSS pixels)
+  const ratio = window.devicePixelRatio || 1;
+
+  // keep CSS size so the element remains square in layout
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+
+  // set internal pixel buffer scaled for devicePixelRatio
+  canvas.width = Math.floor(size * ratio);
+  canvas.height = Math.floor(size * ratio);
+
+  // draw operations should be done in CSS pixel coordinates
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 }
 
-resize();
 window.addEventListener("resize", resize);
 
+// ensure canvas has an initial size before the image loads
+resize();
+
 const logo = new Image();
+
+// attach onload before setting src so cached images still trigger it
+logo.onload = () => {
+  // ensure canvas is sized to current layout
+  resize();
+  animate();
+};
+
+// start loading after onload attached
 logo.src = "cheddy.png";
+
+// if the image was already cached and complete, call onload immediately
+if (logo.complete) {
+  logo.onload();
+}
 
 /* LOGO SIZE */
 const SIZE = 220;
@@ -73,27 +99,25 @@ let dx = 4.2;
 let dy = 3.8;
 
 function animate(){
-
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  // draw in CSS pixels; transform above accounts for DPR
   ctx.drawImage(logo,x,y,SIZE,SIZE);
 
   x += dx;
   y += dy;
 
   // BOUNDARY = square ONLY
-  if(x <= 0 || x + SIZE >= canvas.width){
+  if(x <= 0 || x + SIZE >= parseFloat(canvas.style.width)){
     dx = -dx;
   }
 
-  if(y <= 0 || y + SIZE >= canvas.height){
+  if(y <= 0 || y + SIZE >= parseFloat(canvas.style.height)){
     dy = -dy;
   }
 
   requestAnimationFrame(animate);
 }
-
-logo.onload = animate;
 
 </script>
 
